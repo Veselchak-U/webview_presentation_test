@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String filePath;
@@ -25,7 +27,27 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController();
+    PlatformWebViewControllerCreationParams params =
+        const PlatformWebViewControllerCreationParams();
+    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+      params = WebKitWebViewControllerCreationParams
+          .fromPlatformWebViewControllerCreationParams(
+        params,
+      );
+    } else if (WebViewPlatform.instance is AndroidWebViewPlatform) {
+      params = AndroidWebViewControllerCreationParams
+          .fromPlatformWebViewControllerCreationParams(
+        params,
+      );
+    }
+    _controller = WebViewController.fromPlatformCreationParams(
+      params,
+    );
+    // _controller = WebViewController(
+    //   onPermissionRequest: (WebViewPermissionRequest request) {
+    //     debugPrint('WebView.onPermissionRequest: ${request.types}');
+    //   },
+    // );
     _controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       // ..setBackgroundColor(const Color(0x00000000))
@@ -71,7 +93,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: WebViewWidget(controller: _controller),
     );
   }

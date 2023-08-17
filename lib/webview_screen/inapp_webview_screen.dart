@@ -40,7 +40,9 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: serverStarted
           ? InAppWebView(
               initialFile: widget.filePath,
