@@ -40,6 +40,15 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
     );
   }
 
+  void showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,6 +99,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                     '!!! shouldOverrideUrlLoading(): url = ${navigationAction.request.url}');
                 var uri = navigationAction.request.url!;
                 if (!["file"].contains(uri.scheme)) {
+                  showToast('Переходы по внешним ссылкам запрещены');
                   return NavigationActionPolicy.CANCEL;
                 }
                 return NavigationActionPolicy.ALLOW;

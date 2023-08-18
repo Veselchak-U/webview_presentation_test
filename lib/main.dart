@@ -15,7 +15,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Тестирование презентаций',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromRGBO(131, 0, 81, 1),
+        ),
         useMaterial3: true,
       ),
       home: ChangeNotifierProvider<LoadingScreenVm>(

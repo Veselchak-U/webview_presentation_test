@@ -55,6 +55,13 @@ class LoadingScreenVm extends ChangeNotifier {
       'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv';
   final presentationFileName = 'Calquence_RU_3_2022_Publish.zip';
   final presentationDirName = 'Calquence_RU_3_2022_Publish';
+
+  // final presentationName = 'Synagis_RIA_GI_2023_1';
+  // final presentationUrl =
+  //     'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1lKK-WiWvYhowvTtEOkTa3CDHqiViAOpc';
+  // final presentationFileName = 'Synagis_RIA_GI_2023_1.zip';
+  // final presentationDirName = 'Synagis_RIA_GI_2023_1';
+
   final pathSeparator = Platform.pathSeparator;
 
   late final String basePath;
@@ -210,11 +217,24 @@ class LoadingScreenVm extends ChangeNotifier {
     if (filePaths.isEmpty) {
       showToast('Файл "index.html" не найден');
     } else {
-      filePaths.sort();
-      entryPoint = filePaths.first;
+      entryPoint = _getRootFile(filePaths);
       status = LoadingStatus.ready;
     }
     loading = false;
+  }
+
+  String _getRootFile(List<String> filePaths) {
+    filePaths.sort();
+    String nearest = filePaths.first;
+    int nearestDepth = nearest.split(pathSeparator).length;
+    for (var path in filePaths) {
+      final currentDepth = path.split(pathSeparator).length;
+      if (currentDepth < nearestDepth) {
+        nearest = path;
+        nearestDepth = currentDepth;
+      }
+    }
+    return nearest;
   }
 
   Future<void> deleteAll() async {
