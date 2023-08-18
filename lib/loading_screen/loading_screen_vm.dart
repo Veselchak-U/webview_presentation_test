@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_archive/flutter_archive.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:presentation_test/webview_screen/webview_screen.dart';
+import 'package:presentation_test/webview_screen/inapp_webview_screen.dart';
 
 enum LoadingStatus { notLoaded, loaded, unpacked, ready }
 
@@ -248,7 +248,14 @@ class LoadingScreenVm extends ChangeNotifier {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WebViewScreen(entryPoint),
+        // builder: (context) => WebViewScreen(entryPoint),
+
+        builder: (context) => InappWebViewScreen(
+          filePath: entryPoint,
+          dirPath: dirPath,
+        ),
+
+        // builder: (context) => InappWebServerScreen(entryPoint),
       ),
     );
   }

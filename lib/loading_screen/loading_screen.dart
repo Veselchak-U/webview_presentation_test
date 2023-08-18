@@ -12,25 +12,31 @@ class LoadingScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Presentation test'),
+        title: const Text('Тестирование презентаций'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Презентация: ${vm.presentationName}'),
-            Text('URL: ${vm.presentationUrl}'),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: vm.loading ? null : vm.nextStep,
-              child: Text(vm.nextStepLabel),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text('Презентация: ${vm.presentationName}'),
+                const SizedBox(height: 16),
+                Text('URL: ${vm.presentationUrl}'),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: vm.loading ? null : vm.nextStep,
+                  child: Text(vm.nextStepLabel),
+                ),
+                const SizedBox(height: 60),
+                OutlinedButton(
+                  onPressed: vm.loading ? null : vm.deleteAll,
+                  child: const Text('Удалить загрузки'),
+                ),
+              ],
             ),
-            const SizedBox(height: 60),
-            OutlinedButton(
-              onPressed: vm.loading ? null : vm.deleteAll,
-              child: const Text('Удалить загрузки'),
-            ),
-          ],
+          ),
         ),
       ),
     );
