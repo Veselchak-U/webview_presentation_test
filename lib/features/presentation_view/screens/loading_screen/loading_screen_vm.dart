@@ -2,16 +2,23 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_archive/flutter_archive.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:presentation_test/webview_screen/inapp_webview_screen.dart';
+import 'package:presentation_test/core/api/dio_client.dart';
+import 'package:presentation_test/features/presentation_view/domain/services/file_service.dart';
+import 'package:presentation_test/features/presentation_view/screens/webview_screen/inapp_webview_screen.dart';
 
 enum LoadingStatus { notLoaded, loaded, unpacked, ready }
 
 class LoadingScreenVm extends ChangeNotifier {
   final BuildContext context;
+  final FileService fileService;
+  final DioClient dioClient;
 
-  LoadingScreenVm(this.context) {
+  LoadingScreenVm(
+    this.context, {
+    required this.fileService,
+    required this.dioClient,
+  }) {
     _init();
   }
 
@@ -28,19 +35,16 @@ class LoadingScreenVm extends ChangeNotifier {
   }
 
   Future<void> _checkStatus() async {
-    final filePath = '$basePath$pathSeparator$presentationFileName';
-    final file = File(filePath);
-    if (!await file.exists()) {
+    if (!await fileService.fileExist(filePath)) {
       status = LoadingStatus.notLoaded;
       return;
     }
-    final dir = Directory('$basePath$pathSeparator$presentationDirName');
-    if (!await dir.exists()) {
+    if (!await fileService.directoryExist(dirPath)) {
       status = LoadingStatus.loaded;
       return;
     }
     await findEntryPoint();
-    if (entryPoint.isEmpty) {
+    if (_entryPoint.isEmpty) {
       status = LoadingStatus.unpacked;
       return;
     }
@@ -68,7 +72,8 @@ class LoadingScreenVm extends ChangeNotifier {
   late final String filePath;
   late final String dirPath;
 
-  String entryPoint = '';
+  CancelToken? _cancelToken;
+  String _entryPoint = '';
 
   /// Reactive properties
   ///
@@ -145,13 +150,15 @@ class LoadingScreenVm extends ChangeNotifier {
   Future<void> downloadFile() async {
     loading = true;
     try {
-      await deleteOldFiles();
-      final dio = Dio();
-      await dio.download(
+      // await deleteOldFiles();
+      _cancelToken = CancelToken();
+      await dioClient.downloadRequest(
         presentationUrl,
         filePath,
         onReceiveProgress: _onReceiveProgress,
+        cancelToken: _cancelToken,
       );
+      _cancelToken = null;
       status = LoadingStatus.loaded;
     } catch (error) {
       showToast('Ошибка загрузки: $error');
@@ -161,16 +168,8 @@ class LoadingScreenVm extends ChangeNotifier {
   }
 
   Future<void> deleteOldFiles() async {
-    final file = File(filePath);
-    if (await file.exists()) {
-      await file.delete();
-      debugPrint('!!! deleteOldFiles() old file deleted');
-    }
-    final dir = Directory(dirPath);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
-      debugPrint('!!! deleteOldFiles() old dir deleted');
-    }
+    await fileService.deleteFile(filePath);
+    await fileService.deleteDirectory(dirPath);
   }
 
   void _onReceiveProgress(int received, int total) {
@@ -180,14 +179,16 @@ class LoadingScreenVm extends ChangeNotifier {
     }
   }
 
+  Future<void> cancelDownloading() async {
+    _cancelToken?.cancel('Пользователь остановил загрузку');
+  }
+
   Future<void> uncompressFile() async {
     loading = true;
-    final file = File(filePath);
-    final destinationDir = Directory(dirPath);
     try {
-      await ZipFile.extractToDirectory(
-        zipFile: file,
-        destinationDir: destinationDir,
+      await fileService.extractZipFile(
+        filePath: filePath,
+        destinationPath: dirPath,
         onExtracting: _onExtracting,
       );
       status = LoadingStatus.unpacked;
@@ -198,51 +199,27 @@ class LoadingScreenVm extends ChangeNotifier {
     loading = false;
   }
 
-  ZipFileOperation _onExtracting(ZipEntry zipEntry, double ready) {
-    progressLabel = 'Распаковка: ${ready.toStringAsFixed(1)}%';
-    return ZipFileOperation.includeItem;
+  void _onExtracting(double progress) {
+    progressLabel = 'Распаковка: ${progress.toStringAsFixed(1)}%';
   }
 
   Future<void> findEntryPoint() async {
     loading = true;
-    final presentationPath = Directory(dirPath);
-    final filePaths = <String>[];
-    await for (var entity
-        in presentationPath.list(recursive: true, followLinks: false)) {
-      final fileName = entity.path.split(pathSeparator).last;
-      if (fileName == 'index.html') {
-        filePaths.add(entity.path);
-      }
-    }
+    final filePaths = await fileService.findFile('index.html', dirPath);
     if (filePaths.isEmpty) {
       showToast('Файл "index.html" не найден');
     } else {
-      entryPoint = _getRootFile(filePaths);
+      _entryPoint = filePaths.first;
       status = LoadingStatus.ready;
     }
     loading = false;
   }
 
-  String _getRootFile(List<String> filePaths) {
-    filePaths.sort();
-    String nearest = filePaths.first;
-    int nearestDepth = nearest.split(pathSeparator).length;
-    for (var path in filePaths) {
-      final currentDepth = path.split(pathSeparator).length;
-      if (currentDepth < nearestDepth) {
-        nearest = path;
-        nearestDepth = currentDepth;
-      }
-    }
-    return nearest;
-  }
-
   Future<void> deleteAll() async {
     loading = true;
     try {
-      final baseDir = Directory(basePath);
-      await baseDir.delete(recursive: true);
-      await baseDir.create();
+      await fileService.deleteDirectory(basePath);
+      await fileService.createDirectory(basePath);
       status = LoadingStatus.notLoaded;
       showToast('Удаление завершено');
     } catch (error) {
@@ -271,7 +248,7 @@ class LoadingScreenVm extends ChangeNotifier {
         // builder: (context) => WebViewScreen(entryPoint),
 
         builder: (context) => InappWebViewScreen(
-          filePath: entryPoint,
+          filePath: _entryPoint,
           dirPath: dirPath,
         ),
 

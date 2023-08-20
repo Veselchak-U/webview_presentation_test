@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:presentation_test/loading_screen/loading_screen.dart';
-import 'package:presentation_test/loading_screen/loading_screen_vm.dart';
+import 'package:presentation_test/core/api/dio_client.dart';
+import 'package:presentation_test/core/file/file_service.dart';
+import 'package:presentation_test/features/presentation_view/screens/loading_screen/loading_screen.dart';
+import 'package:presentation_test/features/presentation_view/screens/loading_screen/loading_screen_vm.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -21,7 +23,11 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: ChangeNotifierProvider<LoadingScreenVm>(
-        create: (context) => LoadingScreenVm(context),
+        create: (context) => LoadingScreenVm(
+          context,
+          fileService: FileServiceImpl(),
+          dioClient: DioClient(),
+        ),
         child: const LoadingScreen(),
       ),
     );

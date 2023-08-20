@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:presentation_test/loading_screen/loading_screen_vm.dart';
+import 'package:presentation_test/features/presentation_view/screens/loading_screen/loading_screen_vm.dart';
 import 'package:provider/provider.dart';
 
 class LoadingScreen extends StatelessWidget {
@@ -25,9 +25,19 @@ class LoadingScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text('URL: ${vm.presentationUrl}'),
                 const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: vm.loading ? null : vm.nextStep,
-                  child: Text(vm.nextStepLabel),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: vm.loading ? null : vm.nextStep,
+                      child: Text(vm.nextStepLabel),
+                    ),
+                    const SizedBox(width: 16),
+                    OutlinedButton(
+                      onPressed: vm.cancelDownloading,
+                      child: const Text('Остановить загрузку'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 60),
                 OutlinedButton(
