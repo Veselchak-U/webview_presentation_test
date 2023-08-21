@@ -81,14 +81,18 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               initialOptions: options,
               onWebViewCreated: (controller) {
                 webViewController = controller;
+                controller.addJavaScriptHandler(
+                  handlerName: _summHandlerName,
+                  callback: _summHandlerCallback,
+                );
               },
               onLoadStart: (controller, url) {
-                debugPrint('!!! onLoadStart(): url = $url');
+                debugPrint('!!! onLoadStart() url = $url');
               },
               androidOnPermissionRequest:
                   (controller, origin, resources) async {
                 debugPrint(
-                    '!!! androidOnPermissionRequest(): resources = $resources');
+                    '!!! androidOnPermissionRequest() resources = $resources');
                 // return PermissionRequestResponse(
                 //   resources: resources,
                 //   action: PermissionRequestResponseAction.GRANT,
@@ -96,7 +100,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               },
               shouldOverrideUrlLoading: (controller, navigationAction) async {
                 debugPrint(
-                    '!!! shouldOverrideUrlLoading(): url = ${navigationAction.request.url}');
+                    '!!! shouldOverrideUrlLoading() url = ${navigationAction.request.url}');
                 var uri = navigationAction.request.url!;
                 if (!["file"].contains(uri.scheme)) {
                   showToast('Переходы по внешним ссылкам запрещены');
@@ -105,22 +109,26 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                 return NavigationActionPolicy.ALLOW;
               },
               onLoadStop: (controller, url) async {
-                debugPrint('!!! onLoadStop(): url = $url');
+                debugPrint('!!! onLoadStop() url = $url');
+                await controller.evaluateJavascript(
+                  source: _summHandlerJsSource,
+                );
               },
               onLoadError: (controller, url, code, message) {
-                debugPrint('!!! onLoadError(): message = $message');
+                debugPrint(
+                    '!!! onLoadError() code = $code, message = $message');
               },
               onProgressChanged: (controller, progress) {
-                debugPrint('!!! onProgressChanged(): progress = $progress');
+                debugPrint('!!! onProgressChanged() progress = $progress');
                 setState(() {
                   this.progress = progress / 100;
                 });
               },
               onUpdateVisitedHistory: (controller, url, androidIsReload) {
-                debugPrint('!!! onUpdateVisitedHistory(): url = $url');
+                debugPrint('!!! onUpdateVisitedHistory() url = $url');
               },
               onConsoleMessage: (controller, consoleMessage) {
-                debugPrint('!!! onConsoleMessage(): $consoleMessage');
+                debugPrint('!!! onConsoleMessage(): ${consoleMessage.message}');
               },
             ),
             progress < 1.0
@@ -131,4 +139,29 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
       ),
     );
   }
+
+  final _summHandlerName = 'summHandler';
+
+  dynamic _summHandlerCallback(List<dynamic> args) {
+    debugPrint('!!! _summHandlerCallback() args = $args');
+    num result = 0;
+    for (final element in args) {
+      if (element is num) {
+        result += element;
+      }
+    }
+    debugPrint('!!! _summHandlerCallback() result = $result');
+    return result;
+  }
+
+  String get _summHandlerJsSource => """
+    window.addEventListener("flutterInAppWebViewPlatformReady", function(event) {
+      console.log('!!! flutterInAppWebViewPlatformReady');
+      const args = [300, 30, 3];
+      window.flutter_inappwebview.callHandler('$_summHandlerName', ...args)
+        .then(function(result) {
+          console.log(result);
+        });
+      });
+    """;
 }
