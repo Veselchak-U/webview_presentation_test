@@ -27,19 +27,10 @@ class LoadingScreenVm extends ChangeNotifier {
         _uncompressPresentation = uncompressPresentation,
         _downloadPresentation = downloadPresentation,
         _checkPresentationStatus = checkPresentationStatus,
-        _getPresentationPath = getPresentationPath {
-    _init();
-  }
+        _getPresentationPath = getPresentationPath;
 
-  final presentation = const PresentationEntity(
-    id: 'id_Calquence_RU_3_2022_Publish',
-    url:
-        'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv',
-    fileName: 'Calquence_RU_3_2022_Publish.zip',
-    name: 'Название презентации',
-  );
-
-  Future<void> _init() async {
+  Future<void> init(PresentationEntity presentation) async {
+    this.presentation = presentation;
     await _initPaths();
     await _checkStatus();
   }
@@ -58,6 +49,7 @@ class LoadingScreenVm extends ChangeNotifier {
   /// Regular properties
   ///
 
+  late final PresentationEntity presentation;
   late final String _basePath;
   late final String _filePath;
   late final String _dirPath;
@@ -190,10 +182,15 @@ class LoadingScreenVm extends ChangeNotifier {
   Future<void> _uncompressFile() async {
     loading = true;
     try {
-      await _uncompressPresentation.extractZipFile(
+      await _uncompressPresentation.extractZip(
         filePath: _filePath,
         destinationPath: _dirPath,
-        onExtracting: _onExtracting,
+        onExtracting: (progress) => _onExtracting(1, progress),
+      );
+      progressLabel = '';
+      await _uncompressPresentation.extractAllZips(
+        dirPath: _dirPath,
+        onExtracting: (progress) => _onExtracting(2, progress),
       );
       status = const PresentationStatus.unpacked();
     } catch (error) {
@@ -206,8 +203,8 @@ class LoadingScreenVm extends ChangeNotifier {
     loading = false;
   }
 
-  void _onExtracting(double progress) {
-    progressLabel = 'Распаковка: ${progress.toStringAsFixed(1)}%';
+  void _onExtracting(int step, double progress) {
+    progressLabel = 'Распаковка (шаг $step): ${progress.toStringAsFixed(1)}%';
   }
 
   Future<void> _findEntryPoint() async {

@@ -34,7 +34,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
         useHybridComposition: true,
       ),
       ios: IOSInAppWebViewOptions(
-        allowingReadAccessTo: Uri.parse("file://${widget.dirPath}"),
+        allowingReadAccessTo: Uri.file(widget.dirPath),
         allowsInlineMediaPlayback: true,
       ),
     );
@@ -76,8 +76,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
         child: Stack(
           children: [
             InAppWebView(
-              initialUrlRequest:
-                  URLRequest(url: Uri.parse('file://${widget.filePath}')),
+              initialUrlRequest: URLRequest(url: Uri.file(widget.filePath)),
               initialOptions: options,
               onWebViewCreated: (controller) {
                 webViewController = controller;
@@ -106,7 +105,16 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                   showToast('Переходы по внешним ссылкам запрещены');
                   return NavigationActionPolicy.CANCEL;
                 }
-                return NavigationActionPolicy.ALLOW;
+
+                if (uri.path.contains(widget.dirPath)) {
+                  return NavigationActionPolicy.ALLOW;
+                } else {
+                  final fullUri = _getFullFileUri(uri);
+                  controller.loadUrl(
+                    urlRequest: URLRequest(url: fullUri),
+                  );
+                  return NavigationActionPolicy.CANCEL;
+                }
               },
               onLoadStop: (controller, url) async {
                 debugPrint('!!! onLoadStop() url = $url');
@@ -138,6 +146,17 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
         ),
       ),
     );
+  }
+
+  Uri _getFullFileUri(Uri uri) {
+    var fullPath = '${widget.dirPath}${uri.path}';
+    if (uri.hasQuery) {
+      fullPath += '?${uri.query}';
+    }
+    if (uri.hasFragment) {
+      fullPath += '#${uri.fragment}';
+    }
+    return Uri.parse('file://$fullPath');
   }
 
   final _summHandlerName = 'summHandler';

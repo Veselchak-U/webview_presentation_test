@@ -18,4 +18,9 @@ abstract class FileService {
     required String destinationPath,
     void Function(double)? onExtracting,
   });
+
+  Future<void> extractAllZips({
+    required String dirPath,
+    void Function(double)? onExtracting,
+  });
 }

@@ -88,4 +88,43 @@ class FileServiceImpl implements FileService {
             },
     );
   }
+
+  @override
+  Future<void> extractAllZips({
+    required String dirPath,
+    void Function(double)? onExtracting,
+  }) async {
+    final zipPaths = <String>[];
+    final startDirPath =
+        dirPath.endsWith(_pathSeparator) ? dirPath : dirPath + _pathSeparator;
+
+    final startDir = Directory(startDirPath);
+    await for (final fsEntity
+        in startDir.list(recursive: true, followLinks: false)) {
+      final stat = await fsEntity.stat();
+      final isFile = stat.type == FileSystemEntityType.file;
+      final name = fsEntity.path.split(_pathSeparator).last;
+      if (isFile && name.toLowerCase().endsWith('.zip')) {
+        zipPaths.add(fsEntity.path);
+      }
+    }
+    for (var i = 0; i < zipPaths.length; i++) {
+      final filePath = zipPaths[i];
+      final destinationPath = _getDestinationPath(filePath);
+      await extractZipFile(
+        filePath: filePath,
+        destinationPath: destinationPath,
+      );
+      onExtracting?.call(i + 1 / zipPaths.length);
+    }
+  }
+
+  String _getDestinationPath(String zipPath) {
+    final fileName = zipPath.split(_pathSeparator).last;
+    if (fileName.toLowerCase().endsWith('_shared.zip')) {
+      final dirPath = zipPath.substring(0, zipPath.length - fileName.length);
+      return '${dirPath}shared';
+    }
+    return zipPath.substring(0, zipPath.length - '.zip'.length);
+  }
 }

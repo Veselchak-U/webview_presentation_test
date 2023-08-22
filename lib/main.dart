@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:presentation_test/core/api/dio_client.dart';
-import 'package:presentation_test/core/file/file_service.dart';
+import 'package:presentation_test/core/file/file_service_impl.dart';
 import 'package:presentation_test/features/presentation_view/domain/usecases/check_presentation_status.dart';
 import 'package:presentation_test/features/presentation_view/domain/usecases/delete_presentation.dart';
 import 'package:presentation_test/features/presentation_view/domain/usecases/download_presentation.dart';
