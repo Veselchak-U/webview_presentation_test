@@ -1,4 +1,6 @@
 abstract class FileService {
+  Future<String> getAppDocumentsDirectoryPath();
+
   Future<bool> fileExist(String path);
 
   Future<bool> directoryExist(String path);

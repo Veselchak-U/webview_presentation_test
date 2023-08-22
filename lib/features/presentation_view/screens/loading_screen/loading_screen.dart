@@ -21,9 +21,9 @@ class LoadingScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Text('Презентация: ${vm.presentationName}'),
+                Text('Презентация: ${vm.presentation.name}'),
                 const SizedBox(height: 16),
-                Text('URL: ${vm.presentationUrl}'),
+                Text('URL: ${vm.presentation.url}'),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -32,11 +32,14 @@ class LoadingScreen extends StatelessWidget {
                       onPressed: vm.loading ? null : vm.nextStep,
                       child: Text(vm.nextStepLabel),
                     ),
-                    const SizedBox(width: 16),
-                    OutlinedButton(
-                      onPressed: vm.cancelDownloading,
-                      child: const Text('Остановить загрузку'),
-                    ),
+                    if (vm.isError)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: OutlinedButton(
+                          onPressed: vm.showError,
+                          child: const Text('Показать ошибку'),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 60),

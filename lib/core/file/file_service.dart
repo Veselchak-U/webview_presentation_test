@@ -1,10 +1,17 @@
 import 'dart:io';
 
 import 'package:flutter_archive/flutter_archive.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:presentation_test/features/presentation_view/domain/services/file_service.dart';
 
 class FileServiceImpl implements FileService {
   final _pathSeparator = Platform.pathSeparator;
+
+  @override
+  Future<String> getAppDocumentsDirectoryPath() async {
+    final appDocDir = await getApplicationDocumentsDirectory();
+    return appDocDir.path;
+  }
 
   @override
   Future<bool> fileExist(String path) {

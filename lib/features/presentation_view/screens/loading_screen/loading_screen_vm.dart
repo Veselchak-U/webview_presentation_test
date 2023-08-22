@@ -1,26 +1,43 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:presentation_test/core/api/dio_client.dart';
-import 'package:presentation_test/features/presentation_view/domain/services/file_service.dart';
+import 'package:presentation_test/features/presentation_view/domain/entities/presentation_entity.dart';
+import 'package:presentation_test/features/presentation_view/domain/entities/presentation_status.dart';
+import 'package:presentation_test/features/presentation_view/domain/usecases/check_presentation_status.dart';
+import 'package:presentation_test/features/presentation_view/domain/usecases/delete_presentation.dart';
+import 'package:presentation_test/features/presentation_view/domain/usecases/download_presentation.dart';
+import 'package:presentation_test/features/presentation_view/domain/usecases/get_presentation_paths.dart';
+import 'package:presentation_test/features/presentation_view/domain/usecases/uncompress_presentation.dart';
 import 'package:presentation_test/features/presentation_view/screens/webview_screen/inapp_webview_screen.dart';
-
-enum LoadingStatus { notLoaded, loaded, unpacked, ready }
 
 class LoadingScreenVm extends ChangeNotifier {
   final BuildContext context;
-  final FileService fileService;
-  final DioClient dioClient;
+  final GetPresentationPath _getPresentationPath;
+  final CheckPresentationStatus _checkPresentationStatus;
+  final DownloadPresentation _downloadPresentation;
+  final UncompressPresentation _uncompressPresentation;
+  final DeletePresentation _deletePresentation;
 
   LoadingScreenVm(
     this.context, {
-    required this.fileService,
-    required this.dioClient,
-  }) {
+    required GetPresentationPath getPresentationPath,
+    required CheckPresentationStatus checkPresentationStatus,
+    required DownloadPresentation downloadPresentation,
+    required UncompressPresentation uncompressPresentation,
+    required DeletePresentation deletePresentation,
+  })  : _deletePresentation = deletePresentation,
+        _uncompressPresentation = uncompressPresentation,
+        _downloadPresentation = downloadPresentation,
+        _checkPresentationStatus = checkPresentationStatus,
+        _getPresentationPath = getPresentationPath {
     _init();
   }
+
+  final presentation = const PresentationEntity(
+    id: 'id_Calquence_RU_3_2022_Publish',
+    url:
+        'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv',
+    fileName: 'Calquence_RU_3_2022_Publish.zip',
+    name: 'Название презентации',
+  );
 
   Future<void> _init() async {
     await _initPaths();
@@ -28,61 +45,38 @@ class LoadingScreenVm extends ChangeNotifier {
   }
 
   Future<void> _initPaths() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    basePath = '${appDir.path}${pathSeparator}presentations';
-    filePath = '$basePath$pathSeparator$presentationFileName';
-    dirPath = '$basePath$pathSeparator$presentationDirName';
+    final paths = await _getPresentationPath.getAllPaths(presentation.fileName);
+    _basePath = paths.$1;
+    _filePath = paths.$2;
+    _dirPath = paths.$3;
   }
 
   Future<void> _checkStatus() async {
-    if (!await fileService.fileExist(filePath)) {
-      status = LoadingStatus.notLoaded;
-      return;
-    }
-    if (!await fileService.directoryExist(dirPath)) {
-      status = LoadingStatus.loaded;
-      return;
-    }
-    await findEntryPoint();
-    if (_entryPoint.isEmpty) {
-      status = LoadingStatus.unpacked;
-      return;
-    }
-    status = LoadingStatus.ready;
+    status = await _checkPresentationStatus.checkStatus(_filePath, _dirPath);
   }
 
   /// Regular properties
   ///
 
-  final presentationName = 'Calquence_RU_3_2022_Publish';
-  final presentationUrl =
-      'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv';
-  final presentationFileName = 'Calquence_RU_3_2022_Publish.zip';
-  final presentationDirName = 'Calquence_RU_3_2022_Publish';
+  late final String _basePath;
+  late final String _filePath;
+  late final String _dirPath;
 
-  // final presentationName = 'Synagis_RIA_GI_2023_1';
-  // final presentationUrl =
-  //     'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1lKK-WiWvYhowvTtEOkTa3CDHqiViAOpc';
-  // final presentationFileName = 'Synagis_RIA_GI_2023_1.zip';
-  // final presentationDirName = 'Synagis_RIA_GI_2023_1';
+  bool get isError => status.maybeWhen(
+        error: (_, __) => true,
+        orElse: () => false,
+      );
 
-  final pathSeparator = Platform.pathSeparator;
-
-  late final String basePath;
-  late final String filePath;
-  late final String dirPath;
-
-  CancelToken? _cancelToken;
-  String _entryPoint = '';
+  // CancelToken? _cancelToken;
 
   /// Reactive properties
   ///
 
-  LoadingStatus _status = LoadingStatus.notLoaded;
+  PresentationStatus _status = const PresentationStatus.notLoaded();
 
-  LoadingStatus get status => _status;
+  PresentationStatus get status => _status;
 
-  set status(LoadingStatus value) {
+  set status(PresentationStatus value) {
     if (value != _status) {
       _status = value;
       notifyListeners();
@@ -115,61 +109,71 @@ class LoadingScreenVm extends ChangeNotifier {
   ///
 
   void nextStep() {
-    switch (status) {
-      case LoadingStatus.notLoaded:
-        downloadFile();
-        break;
-      case LoadingStatus.loaded:
-        uncompressFile();
-        break;
-      case LoadingStatus.unpacked:
-        findEntryPoint();
-        break;
-      case LoadingStatus.ready:
-        openPresentation();
-        break;
-    }
+    status.when(
+      notLoaded: () => _downloadFile(),
+      loaded: () => _uncompressFile(),
+      unpacked: () => _findEntryPoint(),
+      ready: (entryPoint) => _openPresentation(entryPoint, _dirPath),
+      error: (_, lastStatus) => _repeatAction(lastStatus),
+    );
+  }
+
+  void _repeatAction(PresentationStatus lastStatus) {
+    status = lastStatus;
+    nextStep();
   }
 
   String get nextStepLabel {
     if (loading && progressLabel.isNotEmpty) {
       return progressLabel;
     }
-    switch (status) {
-      case LoadingStatus.notLoaded:
-        return 'Скачать презентацию';
-      case LoadingStatus.loaded:
-        return 'Распаковать презентацию';
-      case LoadingStatus.unpacked:
-        return 'Найти index.html';
-      case LoadingStatus.ready:
-        return 'Открыть презентацию';
-    }
+    return status.when(
+      notLoaded: () => 'Скачать презентацию',
+      loaded: () => 'Распаковать презентацию',
+      unpacked: () => 'Найти index.html',
+      ready: (_) => 'Открыть презентацию',
+      error: (_, lastStatus) {
+        final lastOperation = lastStatus.when(
+          notLoaded: () => 'скачивание',
+          loaded: () => 'распаковку',
+          unpacked: () => 'поиск index.html',
+          ready: (_) => '',
+          error: (_, __) => '',
+        );
+        return 'Повторить $lastOperation';
+      },
+    );
   }
 
-  Future<void> downloadFile() async {
+  void showError() {
+    status.maybeWhen(
+      error: (message, __) => _showToast(message),
+      orElse: () => {},
+    );
+  }
+
+  Future<void> _downloadFile() async {
     loading = true;
     try {
       // await deleteOldFiles();
-      _cancelToken = CancelToken();
-      await dioClient.downloadRequest(
-        presentationUrl,
-        filePath,
+      await _downloadPresentation.download(
+        presentation.url,
+        _filePath,
         onReceiveProgress: _onReceiveProgress,
-        cancelToken: _cancelToken,
       );
-      _cancelToken = null;
-      status = LoadingStatus.loaded;
+      status = const PresentationStatus.loaded();
     } catch (error) {
-      showToast('Ошибка загрузки: $error');
+      status = PresentationStatus.error(
+        'Ошибка загрузки: $error',
+        lastStatus: const PresentationStatus.notLoaded(),
+      );
     }
     progressLabel = '';
     loading = false;
   }
 
-  Future<void> deleteOldFiles() async {
-    await fileService.deleteFile(filePath);
-    await fileService.deleteDirectory(dirPath);
+  Future<void> _deleteOldFiles() async {
+    await _deletePresentation.delete(_filePath, _dirPath);
   }
 
   void _onReceiveProgress(int received, int total) {
@@ -180,20 +184,23 @@ class LoadingScreenVm extends ChangeNotifier {
   }
 
   Future<void> cancelDownloading() async {
-    _cancelToken?.cancel('Пользователь остановил загрузку');
+    // _cancelToken?.cancel('Пользователь остановил загрузку');
   }
 
-  Future<void> uncompressFile() async {
+  Future<void> _uncompressFile() async {
     loading = true;
     try {
-      await fileService.extractZipFile(
-        filePath: filePath,
-        destinationPath: dirPath,
+      await _uncompressPresentation.extractZipFile(
+        filePath: _filePath,
+        destinationPath: _dirPath,
         onExtracting: _onExtracting,
       );
-      status = LoadingStatus.unpacked;
+      status = const PresentationStatus.unpacked();
     } catch (error) {
-      showToast('Ошибка распаковки: $error');
+      status = PresentationStatus.error(
+        'Ошибка распаковки: $error',
+        lastStatus: const PresentationStatus.loaded(),
+      );
     }
     progressLabel = '';
     loading = false;
@@ -203,14 +210,19 @@ class LoadingScreenVm extends ChangeNotifier {
     progressLabel = 'Распаковка: ${progress.toStringAsFixed(1)}%';
   }
 
-  Future<void> findEntryPoint() async {
+  Future<void> _findEntryPoint() async {
     loading = true;
-    final filePaths = await fileService.findFile('index.html', dirPath);
-    if (filePaths.isEmpty) {
-      showToast('Файл "index.html" не найден');
+    final entryPoint = await _checkPresentationStatus.findEntryPoint(
+      'index.html',
+      _dirPath,
+    );
+    if (entryPoint.isEmpty) {
+      status = const PresentationStatus.error(
+        'Файл "index.html" не найден',
+        lastStatus: PresentationStatus.unpacked(),
+      );
     } else {
-      _entryPoint = filePaths.first;
-      status = LoadingStatus.ready;
+      status = PresentationStatus.ready(entryPoint);
     }
     loading = false;
   }
@@ -218,12 +230,11 @@ class LoadingScreenVm extends ChangeNotifier {
   Future<void> deleteAll() async {
     loading = true;
     try {
-      await fileService.deleteDirectory(basePath);
-      await fileService.createDirectory(basePath);
-      status = LoadingStatus.notLoaded;
-      showToast('Удаление завершено');
+      await _deletePresentation.deleteAll(_basePath);
+      status = const PresentationStatus.notLoaded();
+      _showToast('Удаление завершено');
     } catch (error) {
-      showToast('Ошибка удаления: $error');
+      _showToast('Ошибка удаления: $error');
     }
     loading = false;
   }
@@ -231,7 +242,7 @@ class LoadingScreenVm extends ChangeNotifier {
   /// Navigation methods
   ///
 
-  void showToast(String message) {
+  void _showToast(String message) {
     debugPrint('!!! showToast() message: $message');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -241,14 +252,14 @@ class LoadingScreenVm extends ChangeNotifier {
     );
   }
 
-  void openPresentation() {
+  void _openPresentation(String filePath, String dirPath) {
     Navigator.push(
       context,
       MaterialPageRoute(
         // builder: (context) => WebViewScreen(entryPoint),
 
         builder: (context) => InappWebViewScreen(
-          filePath: _entryPoint,
+          filePath: filePath,
           dirPath: dirPath,
         ),
 
