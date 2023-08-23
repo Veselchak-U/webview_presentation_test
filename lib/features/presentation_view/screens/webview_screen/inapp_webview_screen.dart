@@ -20,6 +20,9 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
   InAppWebViewController? webViewController;
   double progress = 0;
 
+  String? _currentPresentation;
+  String? _currentSlide;
+
   @override
   void initState() {
     super.initState();
@@ -80,9 +83,13 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               initialOptions: options,
               onWebViewCreated: (controller) {
                 webViewController = controller;
+                // controller.addJavaScriptHandler(
+                //   handlerName: _summHandlerName,
+                //   callback: _summHandlerCallback,
+                // );
                 controller.addJavaScriptHandler(
-                  handlerName: _summHandlerName,
-                  callback: _summHandlerCallback,
+                  handlerName: _getVariablesHandlerName,
+                  callback: _getVariablesHandlerCallback,
                 );
               },
               onLoadStart: (controller, url) {
@@ -118,9 +125,14 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               },
               onLoadStop: (controller, url) async {
                 debugPrint('!!! onLoadStop() url = $url');
+                // await controller.evaluateJavascript(
+                //   source: _summHandlerJsSource,
+                // );
                 await controller.evaluateJavascript(
-                  source: _summHandlerJsSource,
+                  source: _getVariablesJsSource,
                 );
+                // final html = await controller.getHtml();
+                // _getMetaDataFromHtml(html);
               },
               onLoadError: (controller, url, code, message) {
                 debugPrint(
@@ -159,28 +171,83 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
     return Uri.parse('file://$fullPath');
   }
 
-  final _summHandlerName = 'summHandler';
+  // final _summHandlerName = 'summHandler';
+  //
+  // dynamic _summHandlerCallback(List<dynamic> args) {
+  //   debugPrint('!!! _summHandlerCallback() args = $args');
+  //   num result = 0;
+  //   for (final element in args) {
+  //     if (element is num) {
+  //       result += element;
+  //     }
+  //   }
+  //   debugPrint('!!! _summHandlerCallback() result = $result');
+  //   return result;
+  // }
+  //
+  // String get _summHandlerJsSource => """
+  //   window.addEventListener("flutterInAppWebViewPlatformReady", function(event) {
+  //     console.log('!!! flutterInAppWebViewPlatformReady');
+  //     const args = [300, 30, 3];
+  //     window.flutter_inappwebview.callHandler('$_summHandlerName', ...args)
+  //       .then(function(result) {
+  //         console.log(result);
+  //       });
+  //     });
+  //   """;
 
-  dynamic _summHandlerCallback(List<dynamic> args) {
-    debugPrint('!!! _summHandlerCallback() args = $args');
-    num result = 0;
-    for (final element in args) {
-      if (element is num) {
-        result += element;
-      }
+  final _getVariablesHandlerName = 'getVariablesHandler';
+
+  String get _getVariablesJsSource => """
+      args = [{
+          'CURRENT_PRESENTATION': CURRENT_PRESENTATION,
+          'CURRENT_SLIDE': CURRENT_SLIDE,
+      }];
+      window.flutter_inappwebview.callHandler('$_getVariablesHandlerName', ...args);
+    """;
+
+  dynamic _getVariablesHandlerCallback(List<dynamic> args) {
+    if (args.isNotEmpty) {
+      final variables = args[0];
+      _currentPresentation = variables['CURRENT_PRESENTATION'];
+      _currentSlide = variables['CURRENT_SLIDE'];
     }
-    debugPrint('!!! _summHandlerCallback() result = $result');
-    return result;
+    debugPrint('!!! _getVariablesHandlerCallback() args = $args');
   }
 
-  String get _summHandlerJsSource => """
-    window.addEventListener("flutterInAppWebViewPlatformReady", function(event) {
-      console.log('!!! flutterInAppWebViewPlatformReady');
-      const args = [300, 30, 3];
-      window.flutter_inappwebview.callHandler('$_summHandlerName', ...args)
-        .then(function(result) {
-          console.log(result);
-        });
-      });
-    """;
+// void _getMetaDataFromHtml(String? html) {
+//   final document = parse(html);
+//   // final (String? currentPresentation, String? currentSlide) =
+//   //     _getCurrentSlide(document.head?.nodes);
+//   final currentPresentation =
+//       _findJavascriptVariable(document.head?.nodes, 'CURRENT_PRESENTATION');
+//   final currentSlide =
+//       _findJavascriptVariable(document.head?.nodes, 'CURRENT_SLIDE');
+//   debugPrint(
+//       'currentPresentation = $currentPresentation, currentSlide = $currentSlide');
+// }
+
+// String? _findJavascriptVariable(dom.NodeList? nodes, String varName) {
+//   for (final node in nodes ?? []) {
+//     debugPrint('!!!! attributes = ${node.attributes}');
+//     if (node.attributes['type'] == 'text/javascript') {
+//       for (final subNode in node.nodes) {
+//         final script = '$subNode';
+//         debugPrint('!!!! subNode.text = $script');
+//         if (script.contains(varName)) {
+//           return _extractValueFromScript(script, varName);
+//         }
+//       }
+//     }
+//   }
+//   return null;
+// }
+
+// String _extractValueFromScript(String script, String varName) {
+//   var replaced = script.replaceAll('\n', ' ');
+//   while (replaced.contains('  ')) {
+//     replaced = script.replaceAll('  ', ' ');
+//   }
+//   final split = replaced.split(' ');
+// }
 }
