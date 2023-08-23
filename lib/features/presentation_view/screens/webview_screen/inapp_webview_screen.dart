@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:presentation_test/features/presentation_view/screens/webview_screen/widgets/pdf_view_dialog.dart';
 
 class InappWebViewScreen extends StatefulWidget {
   final String filePath;
@@ -98,6 +99,10 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                 }
 
                 if (uri.path.contains(widget.dirPath)) {
+                  if (uri.path.toLowerCase().endsWith('.pdf')) {
+                    _openPdfViewDialog(uri.path);
+                    return NavigationActionPolicy.CANCEL;
+                  }
                   return NavigationActionPolicy.ALLOW;
                 } else {
                   final fullUri = _getFullFileUri(uri);
@@ -106,6 +111,9 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                   );
                   return NavigationActionPolicy.CANCEL;
                 }
+              },
+              onUpdateVisitedHistory: (controller, uri, androidIsReload) {
+                debugPrint('!!! onUpdateVisitedHistory() uri = $uri');
               },
               onProgressChanged: (controller, progress) {
                 debugPrint('!!! onProgressChanged() progress = $progress');
@@ -145,6 +153,22 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
       fullPath += '#${uri.fragment}';
     }
     return Uri.parse('file://$fullPath');
+  }
+
+  bool _pdfViewDialogOpened = false;
+
+  Future<void> _openPdfViewDialog(String filePath) async {
+    if (_pdfViewDialogOpened) {
+      return;
+    }
+    debugPrint('!!! _openPdfViewDialog() open = $filePath');
+    _pdfViewDialogOpened = true;
+    await showDialog(
+      context: context,
+      builder: (context) => PdfViewDialog(filePath),
+    );
+    debugPrint('!!! _openPdfViewDialog() close = $filePath');
+    _pdfViewDialogOpened = false;
   }
 
   final _getVariablesHandlerName = 'getVariablesHandler';

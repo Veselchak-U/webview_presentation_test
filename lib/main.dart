@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Тестирование презентаций',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color.fromRGBO(131, 0, 81, 1),
