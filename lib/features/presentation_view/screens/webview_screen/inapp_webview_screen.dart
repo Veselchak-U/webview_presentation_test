@@ -20,6 +20,9 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
   InAppWebViewController? webViewController;
   double progress = 0;
 
+  String? _currentPresentation;
+  String? _currentSlide;
+
   @override
   void initState() {
     super.initState();
@@ -81,21 +84,9 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               onWebViewCreated: (controller) {
                 webViewController = controller;
                 controller.addJavaScriptHandler(
-                  handlerName: _summHandlerName,
-                  callback: _summHandlerCallback,
+                  handlerName: _getVariablesHandlerName,
+                  callback: _getVariablesHandlerCallback,
                 );
-              },
-              onLoadStart: (controller, url) {
-                debugPrint('!!! onLoadStart() url = $url');
-              },
-              androidOnPermissionRequest:
-                  (controller, origin, resources) async {
-                debugPrint(
-                    '!!! androidOnPermissionRequest() resources = $resources');
-                // return PermissionRequestResponse(
-                //   resources: resources,
-                //   action: PermissionRequestResponseAction.GRANT,
-                // );
               },
               shouldOverrideUrlLoading: (controller, navigationAction) async {
                 debugPrint(
@@ -116,24 +107,21 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                   return NavigationActionPolicy.CANCEL;
                 }
               },
-              onLoadStop: (controller, url) async {
-                debugPrint('!!! onLoadStop() url = $url');
-                await controller.evaluateJavascript(
-                  source: _summHandlerJsSource,
-                );
-              },
-              onLoadError: (controller, url, code, message) {
-                debugPrint(
-                    '!!! onLoadError() code = $code, message = $message');
-              },
               onProgressChanged: (controller, progress) {
                 debugPrint('!!! onProgressChanged() progress = $progress');
                 setState(() {
                   this.progress = progress / 100;
                 });
               },
-              onUpdateVisitedHistory: (controller, url, androidIsReload) {
-                debugPrint('!!! onUpdateVisitedHistory() url = $url');
+              onLoadStop: (controller, url) async {
+                debugPrint('!!! onLoadStop() url = $url');
+                await controller.evaluateJavascript(
+                  source: _getVariablesJsSource,
+                );
+              },
+              onLoadError: (controller, url, code, message) {
+                debugPrint(
+                    '!!! onLoadError() code = $code, message = $message');
               },
               onConsoleMessage: (controller, consoleMessage) {
                 debugPrint('!!! onConsoleMessage(): ${consoleMessage.message}');
@@ -159,28 +147,47 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
     return Uri.parse('file://$fullPath');
   }
 
-  final _summHandlerName = 'summHandler';
+  final _getVariablesHandlerName = 'getVariablesHandler';
 
-  dynamic _summHandlerCallback(List<dynamic> args) {
-    debugPrint('!!! _summHandlerCallback() args = $args');
-    num result = 0;
-    for (final element in args) {
-      if (element is num) {
-        result += element;
-      }
+  String get _getVariablesJsSource => """
+      args = [{
+          'CURRENT_PRESENTATION': CURRENT_PRESENTATION,
+          'CURRENT_SLIDE': CURRENT_SLIDE,
+      }];
+      window.flutter_inappwebview.callHandler('$_getVariablesHandlerName', ...args);
+    """;
+
+  dynamic _getVariablesHandlerCallback(List<dynamic> args) {
+    if (args.isNotEmpty) {
+      final variables = args[0];
+      _currentPresentation = variables['CURRENT_PRESENTATION'];
+      _currentSlide = variables['CURRENT_SLIDE'];
     }
-    debugPrint('!!! _summHandlerCallback() result = $result');
-    return result;
+    debugPrint('!!! _getVariablesHandlerCallback() args = $args');
   }
 
-  String get _summHandlerJsSource => """
-    window.addEventListener("flutterInAppWebViewPlatformReady", function(event) {
-      console.log('!!! flutterInAppWebViewPlatformReady');
-      const args = [300, 30, 3];
-      window.flutter_inappwebview.callHandler('$_summHandlerName', ...args)
-        .then(function(result) {
-          console.log(result);
-        });
-      });
-    """;
+// final _summHandlerName = 'summHandler';
+//
+// dynamic _summHandlerCallback(List<dynamic> args) {
+//   debugPrint('!!! _summHandlerCallback() args = $args');
+//   num result = 0;
+//   for (final element in args) {
+//     if (element is num) {
+//       result += element;
+//     }
+//   }
+//   debugPrint('!!! _summHandlerCallback() result = $result');
+//   return result;
+// }
+//
+// String get _summHandlerJsSource => """
+//   window.addEventListener("flutterInAppWebViewPlatformReady", function(event) {
+//     console.log('!!! flutterInAppWebViewPlatformReady');
+//     const args = [300, 30, 3];
+//     window.flutter_inappwebview.callHandler('$_summHandlerName', ...args)
+//       .then(function(result) {
+//         console.log(result);
+//       });
+//     });
+//   """;
 }

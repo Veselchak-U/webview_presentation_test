@@ -1,31 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:presentation_test/features/presentation_view/domain/entities/presentation_entity.dart';
+import 'package:presentation_test/features/presentation_view/data/mocks.dart';
 import 'package:presentation_test/features/presentation_view/screens/loading_screen/loading_screen_vm.dart';
 import 'package:provider/provider.dart';
-
-// const _presentation = PresentationEntity(
-//   id: 'id_Calquence_RU_3_2022_Publish',
-//   url:
-//   'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv',
-//   fileName: 'Calquence_RU_3_2022_Publish.zip',
-//   name: 'Calquence_RU_3_2022_Publish',
-// );
-
-// const _presentation = PresentationEntity(
-//   id: 'id_Synagis_RIA_GI_2023_1',
-//   url:
-//       'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1UYsDW9FvR4JOaXn8SLp9bYOdLfNlQFsr',
-//   fileName: 'Synagis_RIA_GI_2023_1.zip',
-//   name: 'Synagis_RIA_GI_2023_1',
-// );
-
-const _presentation = PresentationEntity(
-  id: 'id_Pulmocort_spec_2023_hobl',
-  url:
-      'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1lKK-WiWvYhowvTtEOkTa3CDHqiViAOpc',
-  fileName: 'Pulmocort_spec_2023_hobl.zip',
-  name: 'Pulmocort_spec_2023_hobl',
-);
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -39,7 +15,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void initState() {
     super.initState();
     final vm = context.read<LoadingScreenVm>();
-    vm.init(_presentation);
+    vm.init(
+      Mocks().presentationsMock[3],
+    );
   }
 
   @override
