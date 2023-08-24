@@ -2,13 +2,13 @@ import 'package:presentation_test/features/presentation_view/domain/entities/pre
 
 class Mocks {
   final presentationsMock = [
-    const PresentationEntity(
-      id: 'id_Calquence_RU_3_2022_Publish',
-      url:
-          'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv',
-      fileName: 'Calquence_RU_3_2022_Publish.zip',
-      name: 'Calquence_RU_3_2022_Publish',
-    ),
+    // const PresentationEntity(
+    //   id: 'id_Calquence_RU_3_2022_Publish',
+    //   url:
+    //       'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=1_33cRbPzWpT-hUrcF-Z0wvqyUZtD93Iv',
+    //   fileName: 'Calquence_RU_3_2022_Publish.zip',
+    //   name: 'Calquence_RU_3_2022_Publish',
+    // ),
     const PresentationEntity(
       id: 'id_Synagis_RIA_GI_2023_1',
       url:
