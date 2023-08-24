@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:presentation_test/core/logger/logger.dart';
 import 'package:presentation_test/features/presentation_view/domain/entities/presentation_entity.dart';
 import 'package:presentation_test/features/presentation_view/domain/entities/presentation_status.dart';
 import 'package:presentation_test/features/presentation_view/domain/usecases/check_presentation_status.dart';
@@ -9,6 +10,7 @@ import 'package:presentation_test/features/presentation_view/domain/usecases/unc
 import 'package:presentation_test/features/presentation_view/screens/webview_screen/inapp_webview_screen.dart';
 
 class PresentationWidgetVm extends ChangeNotifier {
+  final LoggerService _loggerService;
   final GetPresentationPath _getPresentationPath;
   final CheckPresentationStatus _checkPresentationStatus;
   final DownloadPresentation _downloadPresentation;
@@ -16,6 +18,7 @@ class PresentationWidgetVm extends ChangeNotifier {
   final DeletePresentation _deletePresentation;
 
   PresentationWidgetVm({
+    required LoggerService loggerService,
     required GetPresentationPath getPresentationPath,
     required CheckPresentationStatus checkPresentationStatus,
     required DownloadPresentation downloadPresentation,
@@ -25,7 +28,8 @@ class PresentationWidgetVm extends ChangeNotifier {
         _uncompressPresentation = uncompressPresentation,
         _downloadPresentation = downloadPresentation,
         _checkPresentationStatus = checkPresentationStatus,
-        _getPresentationPath = getPresentationPath;
+        _getPresentationPath = getPresentationPath,
+        _loggerService = loggerService;
 
   Future<void> init(
     BuildContext context,
@@ -46,7 +50,9 @@ class PresentationWidgetVm extends ChangeNotifier {
   }
 
   Future<void> _initStatus() async {
+    loading = true;
     status = await _checkPresentationStatus.checkStatus(_filePath, _dirPath);
+    loading = false;
   }
 
   /// Regular properties
@@ -264,6 +270,7 @@ class PresentationWidgetVm extends ChangeNotifier {
         builder: (context) => InappWebViewScreen(
           filePath: filePath,
           dirPath: dirPath,
+          loggerService: _loggerService,
         ),
 
         // builder: (context) => InappWebServerScreen(entryPoint),

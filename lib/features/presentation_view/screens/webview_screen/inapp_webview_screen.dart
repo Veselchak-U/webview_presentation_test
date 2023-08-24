@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_text_viewer/flutter_text_viewer.dart';
+import 'package:intl/intl.dart';
+import 'package:presentation_test/core/logger/logger.dart';
 import 'package:presentation_test/features/presentation_view/screens/webview_screen/widgets/pdf_view_dialog.dart';
 
 class InappWebViewScreen extends StatefulWidget {
   final String filePath;
   final String dirPath;
+  final LoggerService loggerService;
 
   const InappWebViewScreen({
     required this.filePath,
     required this.dirPath,
+    required this.loggerService,
     super.key,
   });
 
@@ -21,6 +26,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
   InAppWebViewController? webViewController;
   double progress = 0;
 
+  final List<String> _eventLog = [];
   String? _currentPresentation;
   String? _currentSlide;
 
@@ -42,6 +48,35 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
         allowsInlineMediaPlayback: true,
       ),
     );
+    _addLogEvent('presentation_open', widget.filePath);
+  }
+
+  @override
+  void dispose() {
+    _addLogEvent('presentation_close', widget.filePath);
+    super.dispose();
+  }
+
+  void _addLogEvent(String event, String message) {
+    final shortMessage = message.replaceAll(widget.dirPath, '');
+    final dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+    _eventLog.add(
+        '$dateTime, PRESENTATION: $_currentPresentation, SLIDE: $_currentSlide, EVENT: $event, MESSAGE: $shortMessage');
+    // widget.loggerService.d(
+    //     'presentation: $_currentPresentation, slide: $_currentSlide, event: $event, $message');
+  }
+
+  Future<void> _viewLog() async {
+    _openListStringViewDialog(_eventLog);
+
+    // final logFilePath = await widget.loggerService.getLogFilePath();
+    // if (logFilePath != null) {
+    //   _openTextFileViewDialog(logFilePath);
+    // }
+  }
+
+  Future<void> _deleteLog() async {
+    await widget.loggerService.clearCurrentLogFile();
   }
 
   void showToast(String message) {
@@ -72,6 +107,10 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
             ElevatedButton(
               child: const Icon(Icons.refresh),
               onPressed: () => webViewController?.reload(),
+            ),
+            ElevatedButton(
+              onPressed: _viewLog,
+              child: const Text('Смотреть лог'),
             ),
           ],
         ),
@@ -110,6 +149,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                 }
               },
               onUpdateVisitedHistory: (controller, uri, androidIsReload) {
+                _addLogEvent('go_to_url', uri?.path ?? '');
                 debugPrint('!!! onUpdateVisitedHistory() uri = $uri');
               },
               onProgressChanged: (controller, progress) {
@@ -123,11 +163,10 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
                 _executeJavaScripts(controller);
               },
               onLoadError: (controller, url, code, message) {
-                debugPrint(
-                    '!!! onLoadError() code = $code, message = $message');
+                _addLogEvent('page_load_error', message);
               },
               onConsoleMessage: (controller, consoleMessage) {
-                debugPrint('!!! onConsoleMessage(): ${consoleMessage.message}');
+                // _addLogEvent('js_console_message', consoleMessage.message);
               },
             ),
             progress < 1.0
@@ -156,14 +195,44 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
     if (_pdfViewDialogOpened) {
       return;
     }
-    debugPrint('!!! _openPdfViewDialog() open = $filePath');
+    _addLogEvent('open_pdf', filePath);
     _pdfViewDialogOpened = true;
     await showDialog(
       context: context,
       builder: (context) => PdfViewDialog(filePath),
     );
-    debugPrint('!!! _openPdfViewDialog() close = $filePath');
     _pdfViewDialogOpened = false;
+    _addLogEvent('close_pdf', filePath);
+  }
+
+  Future<void> _openTextFileViewDialog(String filePath) async {
+    await showDialog(
+      context: context,
+      builder: (context) => TextViewerPage(
+        textViewer: TextViewer.file(filePath),
+        showSearchAppBar: true,
+      ),
+    );
+  }
+
+  Future<void> _openListStringViewDialog(List<String> text) async {
+    await showDialog(
+      context: context,
+      builder: (context) => Scaffold(
+        appBar: AppBar(),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(
+                text.length,
+                (index) => Text(text[index]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _addJavaScriptHandlers(InAppWebViewController controller) {
@@ -197,24 +266,22 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
     """;
 
   dynamic _getVariablesHandlerCallback(List<dynamic> args) {
+    debugPrint('!!! _getVariablesHandlerCallback() args = $args');
     if (args.isNotEmpty) {
       final variables = args[0];
       _currentPresentation = variables['CURRENT_PRESENTATION'];
       _currentSlide = variables['CURRENT_SLIDE'];
     }
-    debugPrint('!!! _getVariablesHandlerCallback() args = $args');
   }
 
   final _sendBtnHandlerName = 'sendBtnHandler';
 
   String get _sendBtnJsSource => """
-    console.log('!!! 1');
     const btns = document.querySelectorAll('.send_btn');
     console.log(btns.length);
     Array.from(btns).forEach((btn) => {
       console.log(btn);
       btn.addEventListener('click', (e) => {
-        console.log('!!! 3');
         const data = sessionStorage.getItem('metricsProfile');
         window.flutter_inappwebview.callHandler('$_sendBtnHandlerName', data)
         return;

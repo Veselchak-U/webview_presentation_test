@@ -6,12 +6,13 @@ import 'package:presentation_test/core/logger/logger.dart';
 typedef ResponseConverter<T> = T Function(dynamic response);
 
 class DioClient {
+  final LoggerService log;
   String baseUrl = 'http://192.168.100.17:3001/';
 
   String? _token;
   late Dio _dio;
 
-  DioClient() {
+  DioClient(this.log) {
     _dio = _createDio();
   }
 

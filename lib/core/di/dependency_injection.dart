@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:presentation_test/core/api/dio_client.dart';
 import 'package:presentation_test/core/file/file_service_impl.dart';
+import 'package:presentation_test/core/logger/logger.dart';
 import 'package:presentation_test/features/presentation_view/domain/services/file_service.dart';
 import 'package:presentation_test/features/presentation_view/domain/usecases/check_presentation_status.dart';
 import 'package:presentation_test/features/presentation_view/domain/usecases/delete_presentation.dart';
@@ -19,7 +20,10 @@ Future<void> serviceLocator({bool isUnitTest = false}) async {
 }
 
 void _service() {
-  sl.registerSingleton<DioClient>(DioClient());
+  sl.registerSingleton<LoggerService>(
+    LoggerService()..init(toFile: true),
+  );
+  sl.registerSingleton<DioClient>(DioClient(sl<LoggerService>()));
   sl.registerLazySingleton<FileService>(() => FileServiceImpl());
 }
 
@@ -39,6 +43,7 @@ void _vm() {
         deletePresentation: sl<DeletePresentation>(),
       ));
   sl.registerFactory(() => PresentationWidgetVm(
+        loggerService: sl<LoggerService>(),
         getPresentationPath: sl<GetPresentationPath>(),
         checkPresentationStatus: sl<CheckPresentationStatus>(),
         downloadPresentation: sl<DownloadPresentation>(),
