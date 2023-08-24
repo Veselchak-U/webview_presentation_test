@@ -65,7 +65,10 @@ class _PresentationWidgetState extends State<PresentationWidget> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(vm.presentation.name),
+        Text(
+          vm.presentation.name,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }

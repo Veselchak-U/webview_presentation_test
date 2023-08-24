@@ -40,10 +40,9 @@ class PresentationWidgetVm extends ChangeNotifier {
   }
 
   Future<void> _initPaths() async {
-    final paths = await _getPresentationPath.getAllPaths(presentation.fileName);
-    _basePath = paths.$1;
-    _filePath = paths.$2;
-    _dirPath = paths.$3;
+    final paths = await _getPresentationPath.getPaths(presentation.fileName);
+    _filePath = paths.$1;
+    _dirPath = paths.$2;
   }
 
   Future<void> _initStatus() async {
@@ -55,7 +54,6 @@ class PresentationWidgetVm extends ChangeNotifier {
 
   late final BuildContext _context;
   late final PresentationEntity presentation;
-  late final String _basePath;
   late final String _filePath;
   late final String _dirPath;
 
@@ -167,6 +165,10 @@ class PresentationWidgetVm extends ChangeNotifier {
     }
     progressLabel = '';
     loading = false;
+
+    if (status == const PresentationStatus.loaded()) {
+      _uncompressFile();
+    }
   }
 
   Future<void> _deleteOldFiles() async {
@@ -187,15 +189,10 @@ class PresentationWidgetVm extends ChangeNotifier {
   Future<void> _uncompressFile() async {
     loading = true;
     try {
-      await _uncompressPresentation.extractZip(
+      await _uncompressPresentation.extractPresentation(
         filePath: _filePath,
         destinationPath: _dirPath,
-        onExtracting: (progress) => _onExtracting(1, progress),
-      );
-      progressLabel = '';
-      await _uncompressPresentation.extractAllZips(
-        dirPath: _dirPath,
-        onExtracting: (progress) => _onExtracting(2, progress),
+        onExtracting: (progress) => _onExtracting(progress),
       );
       status = const PresentationStatus.unpacked();
     } catch (error) {
@@ -206,10 +203,14 @@ class PresentationWidgetVm extends ChangeNotifier {
     }
     progressLabel = '';
     loading = false;
+
+    if (status == const PresentationStatus.unpacked()) {
+      _findEntryPoint();
+    }
   }
 
-  void _onExtracting(int step, double progress) {
-    progressLabel = 'Распаковка (шаг $step): ${progress.toStringAsFixed(1)}%';
+  void _onExtracting(double progress) {
+    progressLabel = 'Распаковка: ${progress.toStringAsFixed(1)}%';
   }
 
   Future<void> _findEntryPoint() async {

@@ -14,11 +14,11 @@ class GetPresentationPath {
     return '$appDocDirPath${_pathSeparator}presentations';
   }
 
-  Future<(String, String, String)> getAllPaths(String fileName) async {
+  Future<(String, String)> getPaths(String fileName) async {
     final basePath = await getBasePath();
     final filePath = '$basePath$_pathSeparator$fileName';
     final dirName = fileName.split('.zip').first;
     final dirPath = '$basePath$_pathSeparator$dirName';
-    return (basePath, filePath, dirPath);
+    return (filePath, dirPath);
   }
 }
