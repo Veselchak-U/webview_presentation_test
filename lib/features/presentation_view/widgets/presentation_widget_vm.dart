@@ -46,7 +46,9 @@ class PresentationWidgetVm extends ChangeNotifier {
   }
 
   Future<void> _initStatus() async {
+    loading = true;
     status = await _checkPresentationStatus.checkStatus(_filePath, _dirPath);
+    loading = false;
   }
 
   /// Regular properties
