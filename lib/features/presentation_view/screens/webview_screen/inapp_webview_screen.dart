@@ -84,10 +84,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               initialOptions: options,
               onWebViewCreated: (controller) {
                 webViewController = controller;
-                controller.addJavaScriptHandler(
-                  handlerName: _getVariablesHandlerName,
-                  callback: _getVariablesHandlerCallback,
-                );
+                _addJavaScriptHandlers(controller);
               },
               shouldOverrideUrlLoading: (controller, navigationAction) async {
                 debugPrint(
@@ -123,9 +120,7 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
               },
               onLoadStop: (controller, url) async {
                 debugPrint('!!! onLoadStop() url = $url');
-                await controller.evaluateJavascript(
-                  source: _getVariablesJsSource,
-                );
+                _executeJavaScripts(controller);
               },
               onLoadError: (controller, url, code, message) {
                 debugPrint(
@@ -171,6 +166,26 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
     _pdfViewDialogOpened = false;
   }
 
+  void _addJavaScriptHandlers(InAppWebViewController controller) {
+    controller.addJavaScriptHandler(
+      handlerName: _getVariablesHandlerName,
+      callback: _getVariablesHandlerCallback,
+    );
+    controller.addJavaScriptHandler(
+      handlerName: _sendBtnHandlerName,
+      callback: _sendBtnHandlerCallback,
+    );
+  }
+
+  Future<void> _executeJavaScripts(InAppWebViewController controller) async {
+    controller.evaluateJavascript(
+      source: _getVariablesJsSource,
+    );
+    controller.evaluateJavascript(
+      source: _sendBtnJsSource,
+    );
+  }
+
   final _getVariablesHandlerName = 'getVariablesHandler';
 
   String get _getVariablesJsSource => """
@@ -188,6 +203,27 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
       _currentSlide = variables['CURRENT_SLIDE'];
     }
     debugPrint('!!! _getVariablesHandlerCallback() args = $args');
+  }
+
+  final _sendBtnHandlerName = 'sendBtnHandler';
+
+  String get _sendBtnJsSource => """
+    console.log('!!! 1');
+    const btns = document.querySelectorAll('.send_btn');
+    console.log(btns.length);
+    Array.from(btns).forEach((btn) => {
+      console.log(btn);
+      btn.addEventListener('click', (e) => {
+        console.log('!!! 3');
+        const data = sessionStorage.getItem('metricsProfile');
+        window.flutter_inappwebview.callHandler('$_sendBtnHandlerName', data)
+        return;
+      });
+    });
+    """;
+
+  dynamic _sendBtnHandlerCallback(List<dynamic> args) {
+    debugPrint('!!! _sendBtnHandlerCallback() args = $args');
   }
 
 // final _summHandlerName = 'summHandler';
