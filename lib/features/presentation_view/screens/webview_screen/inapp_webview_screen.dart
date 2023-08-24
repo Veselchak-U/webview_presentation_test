@@ -76,90 +76,104 @@ class _InappWebViewScreenState extends State<InappWebViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: ButtonBar(
-          alignment: MainAxisAlignment.center,
-          children: <Widget>[
-            ElevatedButton(
-              child: const Icon(Icons.arrow_back),
-              onPressed: () => webViewController?.goBack(),
+      body: Row(
+        children: [
+          Container(
+            color: Theme.of(context).colorScheme.inversePrimary,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  IconButton(
+                    padding: const EdgeInsets.all(24),
+                    icon: const Icon(Icons.arrow_back_ios),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    child: const Icon(Icons.arrow_back),
+                    onPressed: () => webViewController?.goBack(),
+                  ),
+                  ElevatedButton(
+                    child: const Icon(Icons.arrow_forward),
+                    onPressed: () => webViewController?.goForward(),
+                  ),
+                  ElevatedButton(
+                    child: const Icon(Icons.refresh),
+                    onPressed: () => webViewController?.reload(),
+                  ),
+                  ElevatedButton(
+                    onPressed: _viewLog,
+                    child: const Text('Лог'),
+                  ),
+                  const Spacer(),
+                  const SizedBox(height: 64),
+                ],
+              ),
             ),
-            ElevatedButton(
-              child: const Icon(Icons.arrow_forward),
-              onPressed: () => webViewController?.goForward(),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                InAppWebView(
+                  initialUrlRequest: URLRequest(url: Uri.file(widget.filePath)),
+                  initialOptions: options,
+                  onWebViewCreated: (controller) {
+                    webViewController = controller;
+                    _addJavaScriptHandlers(controller);
+                  },
+                  shouldOverrideUrlLoading:
+                      (controller, navigationAction) async {
+                    debugPrint(
+                        '!!! shouldOverrideUrlLoading() url = ${navigationAction.request.url}');
+                    var uri = navigationAction.request.url!;
+                    if (!["file"].contains(uri.scheme)) {
+                      showToast('Переходы по внешним ссылкам запрещены');
+                      return NavigationActionPolicy.CANCEL;
+                    }
+                    if (uri.path.contains(widget.dirPath)) {
+                      if (uri.path.toLowerCase().endsWith('.pdf')) {
+                        _openPdfViewDialog(uri.path);
+                        return NavigationActionPolicy.CANCEL;
+                      }
+                      return NavigationActionPolicy.ALLOW;
+                    } else {
+                      final fullUri = _getFullFileUri(uri);
+                      controller.loadUrl(
+                        urlRequest: URLRequest(url: fullUri),
+                      );
+                      return NavigationActionPolicy.CANCEL;
+                    }
+                  },
+                  onUpdateVisitedHistory: (controller, uri, androidIsReload) {
+                    debugPrint('!!! onUpdateVisitedHistory() url = $uri');
+                    _addLogEvent('go_to_url', uri?.path ?? '');
+                  },
+                  onProgressChanged: (controller, progress) {
+                    setState(() {
+                      this.progress = progress / 100;
+                    });
+                  },
+                  onLoadStop: (controller, url) async {
+                    debugPrint('!!! onLoadStop() url = $url');
+                    _executeJavaScripts(controller);
+                  },
+                  onLoadError: (controller, url, code, message) {
+                    debugPrint('!!! onLoadError() message = $message');
+                    _addLogEvent('page_load_error', message);
+                  },
+                  onConsoleMessage: (controller, consoleMessage) {
+                    debugPrint(
+                        '!!! onConsoleMessage() message = ${consoleMessage.message}');
+                    // _addLogEvent('js_console_message', consoleMessage.message);
+                  },
+                ),
+                progress < 1.0
+                    ? LinearProgressIndicator(value: progress)
+                    : const SizedBox.shrink(),
+              ],
             ),
-            ElevatedButton(
-              child: const Icon(Icons.refresh),
-              onPressed: () => webViewController?.reload(),
-            ),
-            ElevatedButton(
-              onPressed: _viewLog,
-              child: const Text('Смотреть лог'),
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            InAppWebView(
-              initialUrlRequest: URLRequest(url: Uri.file(widget.filePath)),
-              initialOptions: options,
-              onWebViewCreated: (controller) {
-                webViewController = controller;
-                _addJavaScriptHandlers(controller);
-              },
-              shouldOverrideUrlLoading: (controller, navigationAction) async {
-                debugPrint(
-                    '!!! shouldOverrideUrlLoading() url = ${navigationAction.request.url}');
-                var uri = navigationAction.request.url!;
-                if (!["file"].contains(uri.scheme)) {
-                  showToast('Переходы по внешним ссылкам запрещены');
-                  return NavigationActionPolicy.CANCEL;
-                }
-                if (uri.path.contains(widget.dirPath)) {
-                  if (uri.path.toLowerCase().endsWith('.pdf')) {
-                    _openPdfViewDialog(uri.path);
-                    return NavigationActionPolicy.CANCEL;
-                  }
-                  return NavigationActionPolicy.ALLOW;
-                } else {
-                  final fullUri = _getFullFileUri(uri);
-                  controller.loadUrl(
-                    urlRequest: URLRequest(url: fullUri),
-                  );
-                  return NavigationActionPolicy.CANCEL;
-                }
-              },
-              onUpdateVisitedHistory: (controller, uri, androidIsReload) {
-                debugPrint('!!! onUpdateVisitedHistory() url = $uri');
-                _addLogEvent('go_to_url', uri?.path ?? '');
-              },
-              onProgressChanged: (controller, progress) {
-                setState(() {
-                  this.progress = progress / 100;
-                });
-              },
-              onLoadStop: (controller, url) async {
-                debugPrint('!!! onLoadStop() url = $url');
-                _executeJavaScripts(controller);
-              },
-              onLoadError: (controller, url, code, message) {
-                debugPrint('!!! onLoadError() message = $message');
-                _addLogEvent('page_load_error', message);
-              },
-              onConsoleMessage: (controller, consoleMessage) {
-                debugPrint(
-                    '!!! onConsoleMessage() message = ${consoleMessage.message}');
-                // _addLogEvent('js_console_message', consoleMessage.message);
-              },
-            ),
-            progress < 1.0
-                ? LinearProgressIndicator(value: progress)
-                : const SizedBox.shrink(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
