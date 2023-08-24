@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 
 class PresentationWidget extends StatefulWidget {
   final PresentationEntity presentation;
+  final Stream<void> refreshStream;
 
   const PresentationWidget(
     this.presentation, {
-    super.key,
-  });
+    required this.refreshStream,
+    Key? key,
+  }) : super(key: key);
 
   @override
   State<PresentationWidget> createState() => _PresentationWidgetState();
@@ -20,7 +22,11 @@ class _PresentationWidgetState extends State<PresentationWidget> {
   void initState() {
     super.initState();
     final vm = context.read<PresentationWidgetVm>();
-    vm.init(context, widget.presentation);
+    vm.init(
+      context,
+      widget.presentation,
+      widget.refreshStream,
+    );
   }
 
   @override

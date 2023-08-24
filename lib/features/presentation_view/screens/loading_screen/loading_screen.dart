@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:presentation_test/core/di/dependency_injection.dart';
 import 'package:presentation_test/features/presentation_view/screens/loading_screen/loading_screen_vm.dart';
@@ -13,11 +15,26 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
+  final _refreshController = StreamController<void>.broadcast();
+
   @override
   void initState() {
     super.initState();
     final vm = context.read<LoadingScreenVm>();
-    vm.init(context);
+    vm.init(
+      context,
+      _refreshPresentationsStates,
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshController.close();
+    super.dispose();
+  }
+
+  void _refreshPresentationsStates() {
+    _refreshController.add(null);
   }
 
   @override
@@ -41,7 +58,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
             (index) {
               return ChangeNotifierProvider<PresentationWidgetVm>(
                 create: (context) => sl<PresentationWidgetVm>(),
-                child: PresentationWidget(vm.presentations[index]),
+                child: PresentationWidget(
+                  vm.presentations[index],
+                  refreshStream: _refreshController.stream,
+                ),
               );
             },
           ),

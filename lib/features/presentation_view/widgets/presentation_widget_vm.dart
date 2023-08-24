@@ -30,11 +30,13 @@ class PresentationWidgetVm extends ChangeNotifier {
   Future<void> init(
     BuildContext context,
     PresentationEntity presentation,
+    Stream<void> refreshStream,
   ) async {
     _context = context;
     this.presentation = presentation;
+    refreshStream.listen((_) => _initStatus());
     await _initPaths();
-    await _checkStatus();
+    await _initStatus();
   }
 
   Future<void> _initPaths() async {
@@ -44,7 +46,7 @@ class PresentationWidgetVm extends ChangeNotifier {
     _dirPath = paths.$3;
   }
 
-  Future<void> _checkStatus() async {
+  Future<void> _initStatus() async {
     status = await _checkPresentationStatus.checkStatus(_filePath, _dirPath);
   }
 
