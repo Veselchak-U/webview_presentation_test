@@ -40,6 +40,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<LoadingScreenVm>();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final columnCount = screenWidth ~/ 250;
 
     return Scaffold(
       appBar: AppBar(
@@ -48,7 +50,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
       ),
       body: SafeArea(
         child: GridView.count(
-          crossAxisCount: 4,
+          crossAxisCount: columnCount,
           padding: const EdgeInsets.all(24),
           mainAxisSpacing: 24,
           crossAxisSpacing: 24,
